@@ -1,12 +1,14 @@
 import React from 'react'
-import { Route,Link } from 'react-router-dom'
-import Shelf from './Shelf'
+import { Route } from 'react-router-dom'
+import MainPage from './MainPage'
+import SearchPage from './SearchPage'
 import * as BooksAPI from './BooksAPI'
 import './App.css'
 
 class BooksApp extends React.Component {
   state = {
     books:[],
+    foundBooks:[],
     query: ''
   }
 
@@ -17,6 +19,7 @@ class BooksApp extends React.Component {
   getAllBooks(){
     BooksAPI.getAll().then((books) => {
       this.setState({ books:books })
+      this.updateShelf(this.state.foundBooks)
     })
   }
 
@@ -26,69 +29,41 @@ class BooksApp extends React.Component {
     })
   }
 
+  updateShelf(books){
+    for (let book of books){
+      let foundBook=this.state.books.find(element=>element.id===book.id)
+      if (foundBook){
+        book.shelf= foundBook.shelf;
+      }
+      else {
+        book.shelf='none'
+      }
+    }
+    this.setState({ foundBooks:books })
+  }
+
   searchBook = (query) => {
-    BooksAPI.search(query).then((books) => {
-      this.setState({ books:books,query:query })
-    })
+    this.setState({ query:query })
+    if (query){
+      BooksAPI.search(query).then((books) => {
+        if (!books.error){
+          this.updateShelf(books)
+        }
+        else {
+          this.setState({ foundBooks:[] })
+        }
+      })
+    }
   }
 
   render() {
     return (
       <div className="app">
       <Route exact path='/' render={() => (
-      <div className="list-books">
-            <div className="list-books-title">
-              <h1>MyReads</h1>
-            </div>
-            <div className="list-books-content">
-              <div>
-              <Shelf
-            books={this.state.books}
-            name="Currently Reading"
-            shelf="currentlyReading"
-            onUpdateBook={this.updateBook}
-          />
-          <Shelf
-            books={this.state.books}
-            name="Want to Read"
-            shelf="wantToRead"
-            onUpdateBook={this.updateBook}
-          />
-          <Shelf
-            books={this.state.books}
-            name="Read"
-            shelf="read"
-            onUpdateBook={this.updateBook}
-          />
-              </div>
-              </div>
-              </div>
+        <MainPage books={this.state.books} onUpdateBook={this.updateBook} />
       )}/>
       <Route exact path='/search' render={() => (
-        <div className="search-books">
-            <div className="search-books-bar">
-              <Link className='close-search' to='/'>Close</Link>
-              <div className="search-books-input-wrapper">
-              <input
-            type='text'
-            placeholder='Search books'
-            value={this.state.query}
-            onChange={(event) => this.searchBook(event.target.value)}
-          />
-              
-              </div>
-            </div>
-            <div className="search-books-results">
-              <ol className="books-grid">
-              <Shelf
-                books={this.state.books}
-                name=""
-                shelf=""
-                onUpdateBook={this.updateBook}
-              />
-              </ol>
-            </div>
-          </div>
+        <SearchPage books={this.state.foundBooks} query={this.state.query} onUpdateBook={this.updateBook} onSearchBook={this.searchBook} />
         )}/>
       </div>
     )
